@@ -57,6 +57,15 @@ jobs:
             echo "MERGED=false" >> $GITHUB_ENV
           fi
 
+      - name: Set Git committer identity
+        if: env.MERGED == 'true'
+        run: |
+          PR_AUTHOR_NAME="${{ github.event.pull_request.user.login }}"
+          PR_AUTHOR_EMAIL="${PR_AUTHOR_NAME}@github.com"
+
+          git config --local user.email "$PR_AUTHOR_EMAIL"
+          git config --local user.name "$PR_AUTHOR_NAME"
+
       - name: Modify the commit message if the PR is merged
         if: env.MERGED == 'true'
         run: |
