@@ -1,3 +1,3 @@
 const title = 'Hello World';
 
-console.log(title);
+console.log(title + ', Welcome!');
