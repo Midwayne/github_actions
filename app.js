@@ -1,1 +1,3 @@
-console.log('Hello World');
+const title = 'Hello World';
+
+console.log(title);
