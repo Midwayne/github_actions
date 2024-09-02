@@ -52,6 +52,8 @@ jobs:
           COMMENT+="| :-------- | :-------- | :--------: | :-------------------------: |\n"
           COMMENT+="| ${{ env.DATE }} | ${{ env.TIME }} | ${{ env.OFFSET }} | ${{ env.UTC_TIME }} |"
 
-          gh pr comment $PR_NUMBER --body "$COMMENT"
+          # using echo to format the newlines
+          echo -e "$COMMENT" > comment_body.txt
+          gh pr comment $PR_NUMBER --body "$(cat comment_body.txt)"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
