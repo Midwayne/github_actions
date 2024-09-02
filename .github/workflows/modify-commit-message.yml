@@ -1,0 +1,48 @@
+name: Modify commit message if PR is merged
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  modify-commit-message:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo code
+        uses: actions/checkout@v4
+
+      - name: Check if commit is from merged PR
+        id: check-merge
+        run: |
+          if [ "${{ github.event.pull_request.merged }}" == "true" ]; then
+            echo "MERGED=true" >> $GITHUB_ENV
+          else
+            echo "MERGED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Set committer identity
+        if: env.MERGED == 'true'
+        run: |
+          PR_AUTHOR_NAME="${{ github.event.pull_request.user.login }}"
+          PR_AUTHOR_EMAIL="${PR_AUTHOR_NAME}@github.com"
+
+          git config --local user.email "$PR_AUTHOR_EMAIL"
+          git config --local user.name "$PR_AUTHOR_NAME"
+
+      - name: Modify the commit message if the PR is merged
+        if: env.MERGED == 'true'
+        run: |
+          # Get the merge commit hash
+          MERGE_COMMIT_HASH=$(git rev-parse HEAD)
+
+          # Get the timestamp of the merge commit
+          MERGE_TIMESTAMP=$(git show -s --format=%ci $MERGE_COMMIT_HASH)
+
+          LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+
+          NEW_MESSAGE="[${MERGE_TIMESTAMP}] ${LAST_COMMIT_MESSAGE}"
+
+          git commit --amend -m "$NEW_MESSAGE"
+          git push --force
