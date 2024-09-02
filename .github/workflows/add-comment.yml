@@ -1,0 +1,57 @@
+name: Add Comment
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  add-comment:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo code
+        uses: actions/checkout@v4
+
+      - name: Check if PR is merged
+        id: check-merge
+        run: |
+          if [ "${{ github.event.pull_request.merged }}" == "true" ]; then
+            echo "MERGED=true" >> $GITHUB_ENV
+          else
+            echo "MERGED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Get timestamp
+        if: env.MERGED == 'true'
+        run: |
+          # Get the latest commit hash
+          MERGE_COMMIT_SHA=${{ github.event.pull_request.merge_commit_sha }}
+
+          # Get the commit timestamp in ISO 8601 format
+          TIMESTAMP=$(git show -s --format=%ci $MERGE_COMMIT_SHA)
+
+          # Extract date, time, and UTC offset
+          DATE=$(echo $TIMESTAMP | cut -d' ' -f1)
+          TIME=$(echo $TIMESTAMP | cut -d' ' -f2)
+          OFFSET=$(echo $TIMESTAMP | cut -d' ' -f3)
+
+          # Convert it to UTC
+          UTC_TIME=$(date -u -d "$TIMESTAMP" '+%d-%m-%Y %H:%M:%S')
+
+          echo "DATE=$DATE" >> $GITHUB_ENV
+          echo "TIME=$TIME" >> $GITHUB_ENV
+          echo "OFFSET=$OFFSET" >> $GITHUB_ENV
+          echo "UTC_TIME=$UTC_TIME" >> $GITHUB_ENV
+
+      - name: Add the comment to PR
+        if: env.MERGED == 'true'
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          COMMENT="| **Date** | **Time** | **Timezone** | **Standard Time** |\n"
+          COMMENT+="| :-------- | :-------- | :--------: | :-------------------------: |\n"
+          COMMENT+="| ${{ env.DATE }} | ${{ env.TIME }} | ${{ env.OFFSET }} | ${{ env.UTC_TIME }} |"
+
+          gh pr comment $PR_NUMBER --body "$COMMENT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
