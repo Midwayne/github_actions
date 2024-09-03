@@ -41,9 +41,9 @@ jobs:
 
       - name: Send POST request to backend
         if: env.MERGED == 'true'
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_COMMIT }}
         run: |
-          BACKEND_URL="http://195.35.11.190:9093/add-action" 
-
           curl -X POST $BACKEND_URL \
           -H "Content-Type: application/json" \
           -d '{
