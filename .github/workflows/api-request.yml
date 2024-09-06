@@ -35,7 +35,7 @@ jobs:
 
           TIMESTAMP=$(git show -s --format=%ci $MERGE_COMMIT_SHA)
 
-          PR_TITLE=${{ github.event.pull_request.title }}
+          PR_TITLE="${{ github.event.pull_request.title }}"
           PR_AUTHOR=${{ github.event.pull_request.user.login }}
           PR_LINK=${{ github.event.pull_request.html_url }}
           REPO_NAME=${{ github.repository }}
