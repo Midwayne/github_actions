@@ -26,16 +26,15 @@ jobs:
         if: env.MERGED == 'true'
         id: get-details
         run: |
-          # Fetch the repository ID
+
           REPO_ID=${{ github.event.repository.id }}
 
-          # Other commit and PR details
           MERGE_COMMIT_SHA=${{ github.event.pull_request.merge_commit_sha }}
 
-          # Fetch commit message this way
-          COMMIT_MESSAGE=$(git show -s --format=%B "$MERGE_COMMIT_SHA" | tr '\n' ' ')
+          COMMIT_MESSAGE=$(git show -s --format=%B $MERGE_COMMIT_SHA | tr '\n' ' ')
 
           TIMESTAMP=$(git show -s --format=%ci $MERGE_COMMIT_SHA)
+
           PR_TITLE=${{ github.event.pull_request.title }}
           PR_AUTHOR=${{ github.event.pull_request.user.login }}
           PR_LINK=${{ github.event.pull_request.html_url }}
