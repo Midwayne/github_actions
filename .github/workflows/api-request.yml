@@ -1,0 +1,95 @@
+name: Send POST Request on PR Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  send-post-request:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo code
+        uses: actions/checkout@v4
+
+      - name: Check if PR is merged
+        id: check-merge
+        run: |
+          if [ "${{ github.event.pull_request.merged }}" == "true" ]; then
+            echo "MERGED=true" >> $GITHUB_ENV
+          else
+            echo "MERGED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Get commit and repo details
+        if: env.MERGED == 'true'
+        id: get-details
+        run: |
+          REPO_ID=${{ github.event.repository.id }}
+          MERGE_COMMIT_SHA=${{ github.event.pull_request.merge_commit_sha }}
+          COMMIT_MESSAGE=$(git show -s --format=%B $MERGE_COMMIT_SHA | tr '\n' ' ')
+
+          # ISO 8601 like. %cI for strict ISO 8601
+          TIMESTAMP=$(git show -s --format=%ci $MERGE_COMMIT_SHA)
+
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_AUTHOR=${{ github.event.pull_request.user.login }}
+          PR_LINK=${{ github.event.pull_request.html_url }}
+          REPO_NAME=${{ github.repository }}
+
+          # Extracting flag and Jira ticket from PR title
+          if [[ "$PR_TITLE" =~ ^([A-Z]+)(-([0-9]+))?: ]]; then
+            FLAG="${BASH_REMATCH[1]}"
+            JIRA_TICKET="${BASH_REMATCH[3]}"
+          else
+            FLAG=""
+            JIRA_TICKET=""
+          fi
+
+          # Create thelink if both flag and jira ticket exist
+          if [[ -n "$FLAG" && -n "$JIRA_TICKET" ]]; then
+            JIRA_LINK="https://jira.target.com/browse/${FLAG}-${JIRA_TICKET}"
+          else
+            JIRA_LINK=""
+          fi
+
+          # logging on the console
+          echo "FLAG: $FLAG"
+          echo "JIRA_TICKET: $JIRA_TICKET"
+          echo "JIRA_LINK: $JIRA_LINK"
+
+          echo "REPO_ID=$REPO_ID" >> $GITHUB_ENV
+          echo "COMMIT_HASH=$MERGE_COMMIT_SHA" >> $GITHUB_ENV
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+          echo "PR_TITLE=$PR_TITLE" >> $GITHUB_ENV
+          echo "PR_AUTHOR=$PR_AUTHOR" >> $GITHUB_ENV
+          echo "PR_LINK=$PR_LINK" >> $GITHUB_ENV
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+          echo "FLAG=$FLAG" >> $GITHUB_ENV
+          echo "JIRA_TICKET=$JIRA_TICKET" >> $GITHUB_ENV
+          echo "JIRA_LINK=$JIRA_LINK" >> $GITHUB_ENV
+
+      - name: Send POST request to backend
+        if: env.MERGED == 'true'
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_COMMIT }}
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+        run: |
+          curl -X POST "$BACKEND_URL" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $AUTH_TOKEN" \
+          -d '{
+            "repository_id": "'"${{ env.REPO_ID }}"'",
+            "commit_timestamp": "'"${{ env.TIMESTAMP }}"'",
+            "commit_hash": "'"${{ env.COMMIT_HASH }}"'",
+            "commit_message": "'"${{ env.COMMIT_MESSAGE }}"'",
+            "pr_title": "'"${{ env.PR_TITLE }}"'",
+            "pr_author": "'"${{ env.PR_AUTHOR }}"'",
+            "pr_link": "'"${{ env.PR_LINK }}"'",
+            "repository_name": "'"${{ env.REPO_NAME }}"'",
+            "flag": "'"${{ env.FLAG }}"'",
+            "jira_ticket": "'"${{ env.JIRA_TICKET }}"'",
+            "jira_link": "'"${{ env.JIRA_LINK }}"'"
+          }'
